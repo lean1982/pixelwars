@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pixel Wars</title>
+  <title>Space Fleet — Conexa (v2b)</title>
   <style>
     :root { --bg:#0a0a0f; --fg:#e8e8f0; --accent:#4ade80; --danger:#ef4444; --muted:#9ca3af; }
     * { box-sizing: border-box; }
@@ -34,6 +34,36 @@
       /* #fireArea { outline: 1px dashed rgba(255,255,255,0.2); } */
     }
 
+
+    /* ===== Mobile Joystick & Fire Button ===== */
+    #mobileUI { 
+      position: fixed; inset: 0; pointer-events: none; 
+      display: none; z-index: 40;
+    }
+    #stick { position: absolute; left: 16px; bottom: 16px; width: 160px; height: 160px; pointer-events: none; }
+    #stick-base {
+      position: absolute; left: 0; bottom: 0; width: 140px; height: 140px;
+      border-radius: 999px; border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.06); box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      pointer-events: auto; touch-action: none;
+    }
+    #stick-knob {
+      position: absolute; left: 0; bottom: 0; width: 72px; height: 72px;
+      border-radius: 999px; border: 2px solid rgba(255,255,255,0.5);
+      background: rgba(255,255,255,0.16); backdrop-filter: blur(2px);
+      transform: translate(34px, 34px); /* center inside base 140px */
+      pointer-events: auto; touch-action: none;
+    }
+    #fireBtn {
+      position: absolute; right: 20px; bottom: 28px; width: 96px; height: 96px;
+      border-radius: 999px; border: 2px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.12); box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      pointer-events: auto; touch-action: none;
+    }
+    @media (pointer: coarse) {
+      #mobileUI { display: block; }
+    }
+
 </style>
 </head>
 <body>
@@ -60,8 +90,8 @@
   const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
 // Helpers para controles táctiles
-function enableTouchZones(){ const el=document.getElementById('zones'); if (el) el.style.display='block'; }
-function disableTouchZones(){ const el=document.getElementById('zones'); if (el) el.style.display='none'; }
+function enableTouchZones(){ const z=document.getElementById('zones'); if(z) z.style.display='block'; const m=document.getElementById('mobileUI'); if(m) m.style.display='block'; }
+function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.style.display='none'; const m=document.getElementById('mobileUI'); if(m) m.style.display='none'; }
   const zonesEl = document.getElementById('zones');
   function enableTouchZones() { if (zonesEl) zonesEl.style.display = 'block'; }
   function disableTouchZones(){ if (zonesEl) zonesEl.style.display = 'none'; }
@@ -478,12 +508,139 @@ function disableTouchZones(){ const el=document.getElementById('zones'); if (el)
     }, {passive:false});
   })();
 
+
+  // ===== Joystick & Fire (Mobile) =====
+  (function(){
+    const ui = document.getElementById('mobileUI');
+    const base = document.getElementById('stick-base');
+    const knob = document.getElementById('stick-knob');
+    const fire = document.getElementById('fireBtn');
+    if (!ui || !base || !knob || !fire) return;
+
+    const BASE_SIZE = 140;
+    const KNOB_SIZE = 72;
+    const RADIUS = (BASE_SIZE - KNOB_SIZE) / 2; // 34px
+    const CENTER = { x: KNOB_SIZE/2 + RADIUS, y: KNOB_SIZE/2 + RADIUS };
+
+    let joyActive = false;
+    let joyId = null;
+
+    function setInputFromAxis(ax){
+      const dead = 0.18;
+      if (ax > dead){ input.right = true; input.left = false; }
+      else if (ax < -dead){ input.left = true; input.right = false; }
+      else { input.left = input.right = false; }
+    }
+
+    function placeKnob(ax, ay){
+      // Clamp to circle radius
+      const len = Math.hypot(ax, ay);
+      const k = len > 1 ? 1/len : 1;
+      const dx = ax * k * RADIUS;
+      const dy = ay * k * RADIUS;
+      knob.style.transform = `translate(${CENTER.x - KNOB_SIZE/2 + dx}px, ${CENTER.y - KNOB_SIZE/2 + dy}px)`;
+    }
+
+    function resetKnob(){
+      placeKnob(0,0);
+      setInputFromAxis(0);
+    }
+
+    function pointerPosInBase(e){
+      const rect = base.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      // normalize to [-1,1]
+      return { ax: (cx - rect.width/2) / (rect.width/2), ay: (cy - rect.height/2) / (rect.height/2) };
+    }
+
+    // Pointer listeners
+    base.addEventListener('pointerdown', (e)=>{
+      e.preventDefault(); joyActive = true; joyId = e.pointerId;
+      const {ax, ay} = pointerPosInBase(e);
+      placeKnob(ax, ay);
+      setInputFromAxis(ax);
+      base.setPointerCapture(joyId);
+    }, {passive:false});
+
+    base.addEventListener('pointermove', (e)=>{
+      if (!joyActive || e.pointerId !== joyId) return;
+      e.preventDefault();
+      const {ax, ay} = pointerPosInBase(e);
+      placeKnob(ax, ay);
+      setInputFromAxis(ax);
+    }, {passive:false});
+
+    function endJoy(e){
+      if (joyActive && (e.pointerId === undefined || e.pointerId === joyId)){
+        e.preventDefault();
+        joyActive = false; joyId = null;
+        resetKnob();
+        base.releasePointerCapture?.(e.pointerId);
+      }
+    }
+    base.addEventListener('pointerup', endJoy, {passive:false});
+    base.addEventListener('pointercancel', endJoy, {passive:false});
+    base.addEventListener('pointerleave', endJoy, {passive:false});
+
+    // Touch fallback (iOS older)
+    base.addEventListener('touchstart', (e)=>{
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const rect = base.getBoundingClientRect();
+      const cx = t.clientX - rect.left;
+      const cy = t.clientY - rect.top;
+      const ax = (cx - rect.width/2) / (rect.width/2);
+      const ay = (cy - rect.height/2) / (rect.height/2);
+      placeKnob(ax, ay);
+      setInputFromAxis(ax);
+    }, {passive:false});
+    base.addEventListener('touchmove', (e)=>{
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const rect = base.getBoundingClientRect();
+      const cx = t.clientX - rect.left;
+      const cy = t.clientY - rect.top;
+      const ax = (cx - rect.width/2) / (rect.width/2);
+      placeKnob(ax, ay);
+      setInputFromAxis(ax);
+    }, {passive:false});
+    base.addEventListener('touchend', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
+    base.addEventListener('touchcancel', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
+
+    // Fire button
+    function setFire(v){ input.fire = v; }
+    fire.addEventListener('pointerdown', (e)=>{ e.preventDefault(); setFire(true); }, {passive:false});
+    fire.addEventListener('pointerup',   (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
+    fire.addEventListener('pointercancel',(e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
+    fire.addEventListener('touchstart',  (e)=>{ e.preventDefault(); setFire(true); }, {passive:false});
+    fire.addEventListener('touchend',    (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
+    fire.addEventListener('touchcancel', (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
+
+    // Prevent page scroll while using UI
+    document.addEventListener('touchmove', (e)=>{
+      if (joyActive || input.fire) e.preventDefault();
+    }, {passive:false});
+
+    // Init
+    resetKnob();
+  })();
+
 </script>
 
   <!-- Touch Zones (full screen). Left = move (drag), Right = fire (hold) -->
   <div id="zones">
     <div id="moveArea" aria-label="Mover"></div>
     <div id="fireArea" aria-label="Disparar"></div>
+  </div>
+
+  <!-- UI móvil: joystick + disparo -->
+  <div id="mobileUI" aria-hidden="true">
+    <div id="stick">
+      <div id="stick-base"></div>
+      <div id="stick-knob"></div>
+    </div>
+    <button id="fireBtn" aria-label="Disparar"></button>
   </div>
 </body>
 </html>
