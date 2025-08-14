@@ -21,7 +21,40 @@
     button.secondary { background: linear-gradient(180deg, #16a34a, #15803d); box-shadow: 0 6px 16px rgba(16,185,129,.35); }
     kbd { background:#111827; padding:2px 6px; border-radius:6px; border:1px solid #374151; font-size: 12px; }
     .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-  </style>
+  
+    /* Controles móviles */
+    #touch {
+      position: fixed;
+      left: 0; right: 0; bottom: 10px;
+      display: none;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 0 14px;
+      z-index: 10;
+      pointer-events: none; /* los botones habilitan eventos */
+    }
+    #touch button {
+      pointer-events: auto;
+      height: 64px;
+      border-radius: 14px;
+      border: 0;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+    }
+    #btn-fire {
+      height: 72px;
+      font-size: 26px;
+      background: rgba(255,255,255,0.12);
+    }
+    @media (pointer: coarse), (max-width: 768px) {
+      #touch { display: grid; }
+    }
+
+</style>
 </head>
 <body>
   <div id="hud">
@@ -407,6 +440,42 @@
   // boot
   showOverlay('menu');
   loop();
-  </script>
+  
+  // --- Controles táctiles ---
+  (function setupTouch(){
+    const left  = document.getElementById('btn-left');
+    const right = document.getElementById('btn-right');
+    const fire  = document.getElementById('btn-fire');
+    if (!left || !right || !fire) return;
+
+    function bindHold(el, onDown, onUp){
+      const down = (e)=>{ e.preventDefault(); onDown(); };
+      const up   = (e)=>{ e.preventDefault(); onUp();   };
+      el.addEventListener('pointerdown', down, {passive:false});
+      el.addEventListener('pointerup', up, {passive:false});
+      el.addEventListener('pointercancel', up, {passive:false});
+      el.addEventListener('pointerleave', up, {passive:false});
+      // para iOS Safari que no envía pointer* en algunos casos, fallback a touch
+      el.addEventListener('touchstart', down, {passive:false});
+      el.addEventListener('touchend', up, {passive:false});
+      el.addEventListener('touchcancel', up, {passive:false});
+    }
+
+    bindHold(left,  ()=>{ input.left = true; },  ()=>{ input.left = false; });
+    bindHold(right, ()=>{ input.right = true; }, ()=>{ input.right = false; });
+    bindHold(fire,  ()=>{ input.fire = true; },  ()=>{ input.fire = false; });
+
+    // Evitar scroll con gestos dentro del canvas
+    document.getElementById('game').addEventListener('touchmove', e=>e.preventDefault(), {passive:false});
+  })();
+
+</script>
+
+  <!-- Controles táctiles (se muestran en móviles) -->
+  <div id="touch">
+    <button id="btn-left"  aria-label="Izquierda">◄</button>
+    <button id="btn-fire"  aria-label="Disparar">●</button>
+    <button id="btn-right" aria-label="Derecha">►</button>
+  </div>
 </body>
 </html>
