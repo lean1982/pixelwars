@@ -86,7 +86,7 @@
   const levelEl = document.getElementById('level');
   const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
-  // Overlay con planeta y Death Star
+  // Overlay estático: planeta (abajo-izq) + Death Star (arriba-der)
   const overlayImg = new Image();
   let overlayReady = false;
   overlayImg.onload = () => { overlayReady = true; };
@@ -361,15 +361,7 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
     if (!window._starsInit) {
       window._starsInit = true;
       const layers = [
-        { count: 70, speed: 5 
-    // Dibujar overlay con modo 'screen' para respetar negro como transparente
-    if (overlayReady) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      ctx.drawImage(overlayImg, 0, 0, W, H);
-      ctx.restore();
-    }
-},
+        { count: 70, speed: 5 },
         { count: 70, speed: 11 },
         { count: 70, speed: 22 },
       ];
@@ -389,7 +381,15 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
         if (x > W) x -= W;
         ctx.fillRect(x, st.y, st.s, st.s);
       }
+    
+    // Capa de overlay (compuesto en screen para que el negro sea transparente)
+    if (overlayReady) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.drawImage(overlayImg, 0, 0, W, H);
+      ctx.restore();
     }
+}
 
   }
 
