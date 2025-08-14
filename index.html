@@ -39,7 +39,7 @@
     #mobileUI { 
       position: fixed; inset: 0; pointer-events: none; 
       display: none; z-index: 40;
-    }
+     if 'touch-action' in m.group(1) else m.group(1) + ' touch-action: none; -webkit-user-select: none; user-select: none;'}
     #stick { position: absolute; left: 16px; bottom: 16px; width: 160px; height: 160px; pointer-events: none; }
     #stick-base {
       position: absolute; left: 0; bottom: 0; width: 140px; height: 140px;
@@ -61,7 +61,7 @@
       pointer-events: auto; touch-action: none;
     }
     @media (pointer: coarse) {
-      #mobileUI { display: block; }
+      #mobileUI { display: block;  if 'touch-action' in m.group(1) else m.group(1) + ' touch-action: none; -webkit-user-select: none; user-select: none;'}
     }
 
 </style>
@@ -595,16 +595,7 @@ function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.
       placeKnob(ax, ay);
       setInputFromAxis(ax);
     }, {passive:false});
-    base.addEventListener('touchmove', (e)=>{
-      e.preventDefault();
-      const t = e.changedTouches[0];
-      const rect = base.getBoundingClientRect();
-      const cx = t.clientX - rect.left;
-      const cy = t.clientY - rect.top;
-      const ax = (cx - rect.width/2) / (rect.width/2);
-      placeKnob(ax, ay);
-      setInputFromAxis(ax);
-    }, {passive:false});
+    base.addEventListener('touchmove', (e)=>{ e.preventDefault(); const t=e.changedTouches[0]; const rect=base.getBoundingClientRect(); const cx=t.clientX-rect.left; const cy=t.clientY-rect.top; const ax=(cx-rect.width/2)/(rect.width/2); const ay=(cy-rect.height/2)/(rect.height/2); placeKnob(ax, ay); setInputFromAxis(ax); }, {passive:false});
     base.addEventListener('touchend', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
     base.addEventListener('touchcancel', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
 
