@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SW</title>
+  <title>Space Fleet — Conexa (v2b)</title>
   <style>
     :root { --bg:#0a0a0f; --fg:#e8e8f0; --accent:#4ade80; --danger:#ef4444; --muted:#9ca3af; }
     * { box-sizing: border-box; }
@@ -46,7 +46,7 @@
       border-radius: 999px; border: 2px solid rgba(255,255,255,0.25);
       background: rgba(255,255,255,0.06); box-shadow: 0 6px 18px rgba(0,0,0,0.45);
       pointer-events: auto; touch-action: none;
-    }
+     touch-action: none; -webkit-user-select: none; user-select: none;}
     #stick-knob {
       position: absolute; left: 0; bottom: 0; width: 72px; height: 72px;
       border-radius: 999px; border: 2px solid rgba(255,255,255,0.5);
@@ -59,7 +59,7 @@
       border-radius: 999px; border: 2px solid rgba(255,255,255,0.45);
       background: rgba(255,255,255,0.12); box-shadow: 0 6px 18px rgba(0,0,0,0.45);
       pointer-events: auto; touch-action: none;
-    }
+     touch-action: none; -webkit-user-select: none; user-select: none;}
     @media (pointer: coarse) {
       #mobileUI { display: block;  if 'touch-action' in m.group(1) else m.group(1) + ' touch-action: none; -webkit-user-select: none; user-select: none;'}
     }
@@ -90,11 +90,11 @@
   const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
 // Helpers para controles táctiles
-function enableTouchZones(){ const z=document.getElementById('zones'); if(z) z.style.display='block'; const m=document.getElementById('mobileUI'); if(m) m.style.display='block'; }
-function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.style.display='none'; const m=document.getElementById('mobileUI'); if(m) m.style.display='none'; }
+function enableTouchZones(){ const m=document.getElementById('mobileUI'); if(m) m.style.display='block'; const z=document.getElementById('zones'); if(z) z.style.display='none'; }
+function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m) m.style.display='none'; const z=document.getElementById('zones'); if(z) z.style.display='none'; }
   const zonesEl = document.getElementById('zones');
   function enableTouchZones() { if (zonesEl) zonesEl.style.display = 'block'; }
-  function disableTouchZones(){ if (zonesEl) zonesEl.style.display = 'none'; }
+  function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m) m.style.display='none'; const z=document.getElementById('zones'); if(z) z.style.display='none'; }
 
   // Sprite de enemigo (PNG embebido)
   const enemyImg = new Image();
@@ -509,6 +509,7 @@ function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.
   })();
 
 
+  
   // ===== Joystick & Fire (Mobile) =====
   (function(){
     const ui = document.getElementById('mobileUI');
@@ -522,8 +523,8 @@ function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.
     const RADIUS = (BASE_SIZE - KNOB_SIZE) / 2; // 34px
     const CENTER = { x: KNOB_SIZE/2 + RADIUS, y: KNOB_SIZE/2 + RADIUS };
 
-    let joyActive = false;
-    let joyId = null;
+    let joyTouchId = null;
+    let firingTouchId = null;
 
     function setInputFromAxis(ax){
       const dead = 0.18;
@@ -533,87 +534,80 @@ function disableTouchZones(){ const z=document.getElementById('zones'); if(z) z.
     }
 
     function placeKnob(ax, ay){
-      // Clamp to circle radius
       const len = Math.hypot(ax, ay);
       const k = len > 1 ? 1/len : 1;
       const dx = ax * k * RADIUS;
       const dy = ay * k * RADIUS;
       knob.style.transform = `translate(${CENTER.x - KNOB_SIZE/2 + dx}px, ${CENTER.y - KNOB_SIZE/2 + dy}px)`;
     }
+    function resetKnob(){ placeKnob(0,0); setInputFromAxis(0); }
 
-    function resetKnob(){
-      placeKnob(0,0);
-      setInputFromAxis(0);
+    function posInBase(clientX, clientY){
+      const r = base.getBoundingClientRect();
+      const cx = clientX - r.left;
+      const cy = clientY - r.top;
+      return { ax: (cx - r.width/2) / (r.width/2), ay: (cy - r.height/2) / (r.height/2) };
     }
 
-    function pointerPosInBase(e){
-      const rect = base.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
-      // normalize to [-1,1]
-      return { ax: (cx - rect.width/2) / (rect.width/2), ay: (cy - rect.height/2) / (rect.height/2) };
-    }
-
-    // Pointer listeners
-    base.addEventListener('pointerdown', (e)=>{
-      e.preventDefault(); joyActive = true; joyId = e.pointerId;
-      const {ax, ay} = pointerPosInBase(e);
-      placeKnob(ax, ay);
-      setInputFromAxis(ax);
-      base.setPointerCapture(joyId);
-    }, {passive:false});
-
-    base.addEventListener('pointermove', (e)=>{
-      if (!joyActive || e.pointerId !== joyId) return;
+    // --- Touch-only (robust for iOS) ---
+    base.addEventListener('touchstart', (e)=>{
+      if (joyTouchId !== null) return;
+      const t = e.changedTouches[0];
+      joyTouchId = t.identifier;
+      const {ax, ay} = posInBase(t.clientX, t.clientY);
+      placeKnob(ax, ay); setInputFromAxis(ax);
       e.preventDefault();
-      const {ax, ay} = pointerPosInBase(e);
-      placeKnob(ax, ay);
-      setInputFromAxis(ax);
     }, {passive:false});
 
-    function endJoy(e){
-      if (joyActive && (e.pointerId === undefined || e.pointerId === joyId)){
-        e.preventDefault();
-        joyActive = false; joyId = null;
-        resetKnob();
-        base.releasePointerCapture?.(e.pointerId);
+    base.addEventListener('touchmove', (e)=>{
+      if (joyTouchId === null) return;
+      for (const t of e.changedTouches){
+        if (t.identifier === joyTouchId){
+          const {ax, ay} = posInBase(t.clientX, t.clientY);
+          placeKnob(ax, ay); setInputFromAxis(ax);
+          e.preventDefault();
+          break;
+        }
+      }
+    }, {passive:false});
+
+    function endJoyFromTouches(list, e){
+      for (const t of list){
+        if (t.identifier === joyTouchId){
+          joyTouchId = null; resetKnob(); e.preventDefault(); break;
+        }
       }
     }
-    base.addEventListener('pointerup', endJoy, {passive:false});
-    base.addEventListener('pointercancel', endJoy, {passive:false});
-    base.addEventListener('pointerleave', endJoy, {passive:false});
+    base.addEventListener('touchend',   (e)=> endJoyFromTouches(e.changedTouches, e), {passive:false});
+    base.addEventListener('touchcancel',(e)=> endJoyFromTouches(e.changedTouches, e), {passive:false});
 
-    // Touch fallback (iOS older)
-    base.addEventListener('touchstart', (e)=>{
-      e.preventDefault();
-      const t = e.changedTouches[0];
-      const rect = base.getBoundingClientRect();
-      const cx = t.clientX - rect.left;
-      const cy = t.clientY - rect.top;
-      const ax = (cx - rect.width/2) / (rect.width/2);
-      const ay = (cy - rect.height/2) / (rect.height/2);
-      placeKnob(ax, ay);
-      setInputFromAxis(ax);
-    }, {passive:false});
-    base.addEventListener('touchmove', (e)=>{ e.preventDefault(); const t=e.changedTouches[0]; const rect=base.getBoundingClientRect(); const cx=t.clientX-rect.left; const cy=t.clientY-rect.top; const ax=(cx-rect.width/2)/(rect.width/2); const ay=(cy-rect.height/2)/(rect.height/2); placeKnob(ax, ay); setInputFromAxis(ax); }, {passive:false});
-    base.addEventListener('touchend', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
-    base.addEventListener('touchcancel', (e)=>{ e.preventDefault(); resetKnob(); }, {passive:false});
+    // Mouse fallback (desktop debug)
+    base.addEventListener('mousedown', (e)=>{
+      const onMove = (ev)=>{ const {ax, ay}=posInBase(ev.clientX, ev.clientY); placeKnob(ax, ay); setInputFromAxis(ax); };
+      const onUp = ()=>{ resetKnob(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+      onMove(e);
+    });
 
-    // Fire button
+    // --- Fire button (touch-only) ---
     function setFire(v){ input.fire = v; }
-    fire.addEventListener('pointerdown', (e)=>{ e.preventDefault(); setFire(true); }, {passive:false});
-    fire.addEventListener('pointerup',   (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
-    fire.addEventListener('pointercancel',(e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
-    fire.addEventListener('touchstart',  (e)=>{ e.preventDefault(); setFire(true); }, {passive:false});
-    fire.addEventListener('touchend',    (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
-    fire.addEventListener('touchcancel', (e)=>{ e.preventDefault(); setFire(false); }, {passive:false});
+    fire.addEventListener('touchstart', (e)=>{ 
+      if (firingTouchId !== null) return;
+      firingTouchId = e.changedTouches[0].identifier; setFire(true); e.preventDefault(); 
+    }, {passive:false});
+    fire.addEventListener('touchend', (e)=>{ 
+      for (const t of e.changedTouches){ if (t.identifier === firingTouchId){ firingTouchId=null; setFire(false); break; } }
+      e.preventDefault(); 
+    }, {passive:false});
+    fire.addEventListener('touchcancel', (e)=>{ firingTouchId=null; setFire(false); e.preventDefault(); }, {passive:false});
 
-    // Prevent page scroll while using UI
+    // Prevent page scroll while interacting
     document.addEventListener('touchmove', (e)=>{
-      if (joyActive || input.fire) e.preventDefault();
+      if (joyTouchId !== null || firingTouchId !== null) e.preventDefault();
     }, {passive:false});
 
-    // Init
+    // Ensure UI doesn't intercept when not playing
+    disableTouchZones();
     resetKnob();
   })();
 
