@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Space Fleet — Conexa (v2b)</title>
+  <title>Pixel Wars</title>
   <style>
     :root { --bg:#0a0a0f; --fg:#e8e8f0; --accent:#4ade80; --danger:#ef4444; --muted:#9ca3af; }
     * { box-sizing: border-box; }
@@ -23,7 +23,7 @@
     .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
   
     /* Touch zones for mobile */
-    #zones { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+    #zones { position: fixed; inset: 0; z-index: 30; pointer-events: none; display: none; }
     #zones > div { pointer-events: auto; touch-action: none; }
     #moveArea { position: absolute; left: 0; top: 0; bottom: 0; width: 60%; }
     #fireArea { position: absolute; right: 0; top: 0; bottom: 0; width: 40%; }
@@ -59,6 +59,13 @@
   const levelEl = document.getElementById('level');
   const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
+// Helpers para controles táctiles
+function enableTouchZones(){ const el=document.getElementById('zones'); if (el) el.style.display='block'; }
+function disableTouchZones(){ const el=document.getElementById('zones'); if (el) el.style.display='none'; }
+  const zonesEl = document.getElementById('zones');
+  function enableTouchZones() { if (zonesEl) zonesEl.style.display = 'block'; }
+  function disableTouchZones(){ if (zonesEl) zonesEl.style.display = 'none'; }
+
   // Sprite de enemigo (PNG embebido)
   const enemyImg = new Image();
   let enemyImgReady = false;
@@ -394,13 +401,17 @@
       card.appendChild(row);
     }
     overlay.appendChild(card);
-  }
+  disableTouchZones(); }
+  disableTouchZones();
+
 
   function startGame(){
     overlay.innerHTML='';
     score = 0; scoreEl.textContent = 0; player = new Player(); renderLives();
     level = 1; levelEl.textContent = 1; resetLevel(); state='playing';
-  }
+  enableTouchZones(); }
+  enableTouchZones();
+
 
   // ---------- Input ----------
   const on = (k)=>{ if(k==='ArrowLeft'||k==='a'||k==='A') input.left=true; if(k==='ArrowRight'||k==='d'||k==='D') input.right=true; if(k===' ') input.space=true; };
