@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Space Fleet — Conexa (v2b)</title>
+  <title>Pixel Wars</title>
   <style>
     :root { --bg:#0a0a0f; --fg:#e8e8f0; --accent:#4ade80; --danger:#ef4444; --muted:#9ca3af; }
     * { box-sizing: border-box; }
@@ -23,7 +23,7 @@
     .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
   
     /* Touch zones for mobile */
-    #zones { position: fixed; inset: 0; z-index: 30; pointer-events: none; display: none; }
+    #zones { display: none !important; }
     #zones > div { pointer-events: auto; touch-action: none; }
     #moveArea { position: absolute; left: 0; top: 0; bottom: 0; width: 60%; }
     #fireArea { position: absolute; right: 0; top: 0; bottom: 0; width: 40%; }
@@ -36,10 +36,7 @@
 
 
     /* ===== Mobile Joystick & Fire Button ===== */
-    #mobileUI { 
-      position: fixed; inset: 0; pointer-events: none; 
-      display: none; z-index: 40;
-     if 'touch-action' in m.group(1) else m.group(1) + ' touch-action: none; -webkit-user-select: none; user-select: none;'}
+    #mobileUI { display: none !important; }
     #stick { position: absolute; left: 16px; bottom: 16px; width: 160px; height: 160px; pointer-events: none; }
     #stick-base {
       position: absolute; left: 0; bottom: 0; width: 140px; height: 140px;
@@ -61,7 +58,7 @@
       pointer-events: auto; touch-action: none;
      touch-action: none; -webkit-user-select: none; user-select: none;}
     @media (pointer: coarse) {
-      #mobileUI { display: block;  if 'touch-action' in m.group(1) else m.group(1) + ' touch-action: none; -webkit-user-select: none; user-select: none;'}
+      #mobileUI { display: none !important; }
     }
 
 </style>
@@ -171,10 +168,7 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
       if(input.right) this.x += this.speed*dt;
       this.x = clamp(this.x, 24, W-24); // llega bien a los bordes
       this.cool = Math.max(0, this.cool - dt);
-      if((input.fire || input.space) && this.cool<=0){
-        bullets.push(new Bullet(this.x, this.y-16, -700));
-        this.cool = 0.18; // fire rate
-      }
+      if(this.cool<=0){ bullets.push(new Bullet(this.x, this.y-16, -700)); this.cool = 0.18; }
     }
     draw(){ drawPlayer(this.x, this.y); }
   }
@@ -408,24 +402,24 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   function showOverlay(kind){
     overlay.innerHTML=''; const card=document.createElement('div'); card.className='card';
     if(kind==='menu'){
-      card.innerHTML = `<h1>Space Fleet</h1>
+      card.innerHTML = `<h1>Pixel Wars</h1>
         <p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>. Dispará con <kbd>Espacio</kbd>.
         +100 pts por nave. 5 vidas. 3 niveles. Cada 10s toda la formación baja.</p>`;
       const row=document.createElement('div'); row.className='row';
       row.appendChild(btn('Jugar', startGame));
       card.appendChild(row);
     } else if(kind==='level'){
-      card.innerHTML = `<h1>Nivel ${level}</h1><p>¡Preparados!</p>`;
+      card.innerHTML = `<h1>Pixel Wars</h1><p>¡Preparados!</p>`;
       const row=document.createElement('div'); row.className='row';
       row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }));
       card.appendChild(row);
     } else if(kind==='gameover'){
-      card.innerHTML = `<h1>Game Over</h1><p>Tu puntaje: <b>${score}</b></p>`;
+      card.innerHTML = `<h1>Pixel Wars</h1><p>Tu puntaje: <b>${score}</b></p>`;
       const row=document.createElement('div'); row.className='row';
       row.appendChild(btn('Reintentar', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
       card.appendChild(row);
     } else if(kind==='win'){
-      card.innerHTML = `<h1>¡Ganaste!</h1><p>Completaste los 3 niveles. Puntaje final: <b>${score}</b></p>`;
+      card.innerHTML = `<h1>Pixel Wars</h1><p>Completaste los 3 niveles. Puntaje final: <b>${score}</b></p>`;
       const row=document.createElement('div'); row.className='row';
       row.appendChild(btn('Jugar de nuevo', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
       card.appendChild(row);
@@ -609,6 +603,31 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
     // Ensure UI doesn't intercept when not playing
     disableTouchZones();
     resetKnob();
+  })();
+
+
+  // === Touch to Move (canvas-relative) ===
+  (function(){
+    function getCanvasX(clientX){
+      const rect = canvas.getBoundingClientRect();
+      // Map CSS pixel to canvas coordinate
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      return Math.max(24, Math.min(W-24, x));
+    }
+    function handleTouch(e){
+      if (!player) return;
+      const t = e.changedTouches[0];
+      player.x = getCanvasX(t.clientX);
+      e.preventDefault();
+    }
+    canvas.addEventListener('touchstart', handleTouch, {passive:false});
+    canvas.addEventListener('touchmove',  handleTouch, {passive:false});
+    canvas.addEventListener('touchend',   (e)=>{ e.preventDefault(); }, {passive:false});
+    // Mouse drag fallback
+    let md = false;
+    canvas.addEventListener('mousedown', (e)=>{ md=true; player && (player.x=getCanvasX(e.clientX)); });
+    window.addEventListener('mousemove', (e)=>{ if(md && player) player.x=getCanvasX(e.clientX); });
+    window.addEventListener('mouseup',   ()=>{ md=false; });
   })();
 
 </script>
