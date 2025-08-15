@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pixel Wars</title>
+  <title>Pixel Wars | By Leandro Bevilacqua V.02</title>
   <style>
     :root { --bg:#0a0a0f; --fg:#e8e8f0; --accent:#4ade80; --danger:#ef4444; --muted:#9ca3af; }
     * { box-sizing: border-box; }
@@ -98,29 +98,35 @@
 
 
 
-/* --- Intro: PNG logo + START just below the logo --- */
+
+/* --- Intro: absolute layout (logo + START placed by viewport %) --- */
 #overlay .card.intro{
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(16px, 4vh, 28px);
+  position: absolute;
+  inset: 0;
 }
 .intro .logo{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 28vh;               /* logo ~upper-middle */
   width: min(84vw, 520px);
   height: auto;
-  display: block;
   image-rendering: pixelated;
 }
 .intro .start-btn{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 62vh;               /* <-- START placed in the circled area */
   font-family: inherit;
   font-weight: 900;
   letter-spacing: 2px;
   font-size: clamp(16px, 3.6vw, 22px);
-  padding: 8px 20px;
+  padding: 10px 22px;
   color: #ffd21f;
   background: transparent;
   border: 2px solid #ffd21f;
@@ -130,8 +136,17 @@
   transition: transform .08s ease, filter .12s ease;
   user-select: none;
 }
-.intro .start-btn:active{ transform: scale(0.98); }
+.intro .start-btn:active{ transform: translateX(-50%) scale(0.98); }
 .intro .start-btn:hover{ filter: brightness(1.15); }
+
+@media (max-height: 700px){
+  .intro .logo{ top: 20vh; }
+  .intro .start-btn{ top: 56vh; }
+}
+@media (orientation: landscape) and (max-height: 540px){
+  .intro .logo{ top: 10vh; width: min(74vw, 480px); }
+  .intro .start-btn{ top: 66vh; }
+}
 
 </style>
 </head>
@@ -498,7 +513,6 @@ function showOverlay(kind){
   const sbtn = document.createElement('button'); sbtn.className='start-btn'; sbtn.textContent='START';
   sbtn.onclick = startGame; card.appendChild(sbtn);
 }
-
   overlay.appendChild(card);
   disableTouchZones();
 }
