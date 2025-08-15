@@ -11,7 +11,7 @@
     #hud { position: fixed; inset: 8px 8px auto 8px; display: flex; gap: 8px; align-items: center; font-weight: 600; z-index: 2; }
     #hud .pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 999px; font-size: 12px; }
     #hud .lives img { display:inline-block; width:18px; height:18px; margin-right:6px; image-rendering: crisp-edges; ; filter: invert(1) brightness(1.15); }
-    #wrap { position: relative; width: min(460px, 100vw); margin: 40px auto 8px; }
+    #wrap { position: relative; width: min(460px, 100vw); margin: 40px auto 8px;  touch-action: none; -webkit-user-select: none; user-select: none;}
     canvas { width: 100%; height: auto; display: block; border-radius: 12px; background: #000; box-shadow: 0 14px 28px rgba(0,0,0,0.35), inset 0 0 60px rgba(80,120,255,0.08); }
     #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
     .card { background: rgba(15, 18, 35, 0.92); border: 1px solid rgba(255,255,255,0.08); padding: 18px 20px; border-radius: 14px; max-width: 520px; pointer-events:auto; }
@@ -649,6 +649,47 @@ let interFrames = 0;
     canvas.addEventListener('mousedown', (e)=>{ md=true; player && (player.x=getCanvasX(e.clientX)); });
     window.addEventListener('mousemove', (e)=>{ if(md && player) player.x=getCanvasX(e.clientX); });
     window.addEventListener('mouseup',   ()=>{ md=false; });
+  })();
+
+
+  // === Pointer/Touch press-to-move and fire ===
+  (function(){
+    let pressing = false;
+    function getCanvasX(clientX){
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      return Math.max(24, Math.min(W-24, x));
+    }
+    // Mouse
+    canvas.addEventListener('mousedown', (e)=>{
+      pressing = true; input.fire = true;
+      if (player) player.x = getCanvasX(e.clientX);
+    });
+    window.addEventListener('mousemove', (e)=>{
+      if (!pressing) return;
+      if (player) player.x = getCanvasX(e.clientX);
+    });
+    window.addEventListener('mouseup', ()=>{
+      pressing = false; input.fire = false;
+    });
+    // Touch
+    canvas.addEventListener('touchstart', (e)=>{
+      const t = e.changedTouches[0]; pressing = true; input.fire = true;
+      if (player) player.x = getCanvasX(t.clientX);
+      e.preventDefault();
+    }, {passive:false});
+    canvas.addEventListener('touchmove', (e)=>{
+      if (!pressing) return;
+      const t = e.changedTouches[0];
+      if (player) player.x = getCanvasX(t.clientX);
+      e.preventDefault();
+    }, {passive:false});
+    canvas.addEventListener('touchend', (e)=>{
+      pressing = false; input.fire = false; e.preventDefault();
+    }, {passive:false});
+    canvas.addEventListener('touchcancel', (e)=>{
+      pressing = false; input.fire = false; e.preventDefault();
+    }, {passive:false});
   })();
 
 </script>
