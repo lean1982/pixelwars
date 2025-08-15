@@ -11,7 +11,7 @@
     #hud { position: fixed; inset: 8px 8px auto 8px; display: flex; gap: 8px; align-items: center; font-weight: 600; z-index: 2; }
     #hud .pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 999px; font-size: 12px; }
     #hud .lives img { display:inline-block; width:18px; height:18px; margin-right:6px; image-rendering: crisp-edges; ; filter: invert(1) brightness(1.15); }
-    #wrap { position: relative; width: min(460px, 100vw); margin: 40px auto 8px;  touch-action: none; -webkit-user-select: none; user-select: none;}
+    #wrap { position: relative; width: min(460px, 100vw); margin: 40px auto 8px; touch-action: none; -webkit-user-select: none; user-select: none;}
     canvas { width: 100%; height: auto; display: block; border-radius: 12px; background: #000; box-shadow: 0 14px 28px rgba(0,0,0,0.35), inset 0 0 60px rgba(80,120,255,0.08); }
     #overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
     .card { background: rgba(15, 18, 35, 0.92); border: 1px solid rgba(255,255,255,0.08); padding: 18px 20px; border-radius: 14px; max-width: 520px; pointer-events:auto; }
@@ -174,7 +174,7 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
       if(input.right) this.x += this.speed*dt;
       this.x = clamp(this.x, 24, W-24); // llega bien a los bordes
       this.cool = Math.max(0, this.cool - dt);
-      if(this.cool<=0){ bullets.push(new Bullet(this.x, this.y-16, -700)); this.cool = 0.18; }
+      if (input.fire && this.cool <= 0) { bullets.push(new Bullet(this.x, this.y-16, -700)); this.cool = 0.18; }
     }
     draw(){ drawPlayer(this.x, this.y); }
   }
@@ -652,7 +652,7 @@ let interFrames = 0;
   })();
 
 
-  // === Pointer/Touch press-to-move and fire ===
+  // === Pointer/Touch press-to-move and fire (press = move + shoot) ===
   (function(){
     let pressing = false;
     function getCanvasX(clientX){
