@@ -193,6 +193,13 @@
   const W = 420, H = 600; // tamaño compacto (sin scroll)
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  // === Explosiones (6 frames) ===
+  const EXP_FRAMES = [1,2,3,4,5,6].map(n => {
+    const im = new Image();
+    im.src = `explotion_${n}.png`; // Deben estar junto al index
+    return im;
+  });
+
   const scoreEl = document.getElementById('score');
   const levelEl = document.getElementById('level');
   const livesEl = document.getElementById('lives');
@@ -322,6 +329,7 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
 
   // -------- Game State ---------
   const input = { left:false, right:false, space:false, fire:false };
+  let explosions = [];
   let player=null, enemies=[], bullets=[], ebullets=[], score=0, level=1, state='menu';
   let dir=1, swarmSpeed=40, stepDown=20, swarmLeft=36, swarmRight=W-36;
   let enemyBulletSpeed=220, descentTimer=0, descentInterval=10;
@@ -406,6 +414,25 @@ bullets = []; ebullets = [];
       ebullets.push(new Bullet(enemy.x, enemy.y+10, +enemyBulletSpeed, true));
     }
 }
+class Explosion {
+  constructor(x,y,scale=0.25){
+    this.x=x; this.y=y; this.scale=scale;
+    this.t=0; this.fps=14; this.frame=0; this.done=false;
+  }
+  update(dt){
+    this.t += dt;
+    const idx = Math.floor(this.t * this.fps);
+    if (idx >= EXP_FRAMES.length) { this.done = true; return; }
+    this.frame = idx;
+  }
+  draw(){
+    const im = EXP_FRAMES[Math.min(this.frame, EXP_FRAMES.length-1)];
+    if (!im.complete) return;
+    const size = im.width * this.scale;
+    ctx.drawImage(im, this.x - size/2, this.y - size/2, size, size);
+  }
+}
+
 
   function update(dt){
     if(state!=='playing') return;
@@ -464,12 +491,16 @@ for(let i=0;i<enemies.length;i++){ const a=enemies[i]; if(!a.alive) continue; fo
 bullets.forEach(b=>b.update(dt));
     ebullets.forEach(b=>b.update(dt));
 
+    // explosiones
+    explosions.forEach(ex=>ex.update(dt));
+    explosions = explosions.filter(ex=>!ex.done);
+
     // colisiones jugador->enemigos
     for(const b of bullets){
       for(const e of enemies){
         if(!e.alive) continue;
         if(rectsOverlap(b.rect, e.rect)){
-          e.alive=false; b.y = -9999; score += 100; scoreEl.textContent = score;
+          e.alive=false; explosions.push(new Explosion(e.x, e.y, 0.25)); b.y = -9999; score += 100; scoreEl.textContent = score;
         }
       }
     }
@@ -507,6 +538,7 @@ bullets.forEach(b=>b.update(dt));
     for(const e of enemies) e.draw(t);
     for(const b of bullets) b.draw();
     for(const b of ebullets) b.draw();
+    for(const ex of explosions) ex.draw();
     if (player) player.draw();
   }
 
@@ -638,9 +670,7 @@ let interFrames = 0;
 
   // boot
   showOverlay('menu');
-  loop();
-  
-  // --- Mobile Touch Zones Controls ---
+  loop();// --- Mobile Touch Zones Controls ---
   (function(){
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const moveArea = document.getElementById('moveArea');
