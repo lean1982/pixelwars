@@ -78,7 +78,7 @@
   height: auto;
   image-rendering: pixelated;
 }
-.intro .start-btn{
+.start-btn{
   font-family: inherit;
   font-weight: 800;
   letter-spacing: 2px;
@@ -93,8 +93,8 @@
   transition: transform .08s ease, filter .12s ease;
   user-select: none;
 }
-.intro .start-btn:active{ transform: scale(0.98); }
-.intro .start-btn:hover{ filter: brightness(1.15); }
+.start-btn:active{ transform: scale(0.98); }
+.start-btn:hover{ filter: brightness(1.15); }
 
 
 
@@ -117,7 +117,7 @@
   height: auto;
   image-rendering: pixelated;
 }
-.intro .start-btn{
+.start-btn{
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -136,16 +136,16 @@
   transition: transform .08s ease, filter .12s ease;
   user-select: none;
 }
-.intro .start-btn:active{ transform: translateX(-50%) scale(0.98); }
-.intro .start-btn:hover{ filter: brightness(1.15); }
+.start-btn:active{ transform: translateX(-50%) scale(0.98); }
+.start-btn:hover{ filter: brightness(1.15); }
 
 @media (max-height: 700px){
   .intro .logo{ top: 36vh; }
-  .intro .start-btn{ top: 56vh; }
+  .start-btn{ top: 56vh; }
 }
 @media (orientation: landscape) and (max-height: 540px){
   .intro .logo{ top: 36vh; width: min(74vw, 480px); }
-  .intro .start-btn{ top: 66vh; }
+  .start-btn{ top: 66vh; }
 }
 
 </style>
@@ -496,7 +496,7 @@ bullets.forEach(b=>b.update(dt));
 
   function nextLevel(){
     level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>LEVEL ${level}</h1>`;overlay.appendChild(card);} interFrames = 150; state='interlevel';
+    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML = `<div class="start-btn" style="pointer-events:none">LEVEL ${level}</div>`;overlay.appendChild(card);} interFrames = 150; state='interlevel';
   }
 
   // ---------- Overlay UI ----------
