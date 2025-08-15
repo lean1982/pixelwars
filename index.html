@@ -152,8 +152,8 @@
 </head>
 <body>
   <div id="hud">
-    <div class="pill">Puntos: <span id="score">0</span></div>
-    <div class="pill">Nivel: <span id="level">1</span>/3</div>
+    <div class="pill">SCORE: <span id="score">0</span></div>
+    <div class="pill">LEVEL: <span id="level">1</span>/3</div>
     <div class="pill lives" id="lives"></div>
   </div>
 
@@ -496,7 +496,7 @@ bullets.forEach(b=>b.update(dt));
 
   function nextLevel(){
     level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames = 150; state='interlevel';
+    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>LEVEL ${level}</h1>`;overlay.appendChild(card);} interFrames = 150; state='interlevel';
   }
 
   // ---------- Overlay UI ----------
