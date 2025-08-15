@@ -330,6 +330,8 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   // -------- Game State ---------
   const input = { left:false, right:false, space:false, fire:false };
   let explosions = [];
+let isFinishing = false;
+let finishingTimer = 0;
   let player=null, enemies=[], bullets=[], ebullets=[], score=0, level=1, state='menu';
   let dir=1, swarmSpeed=40, stepDown=20, swarmLeft=36, swarmRight=W-36;
   let enemyBulletSpeed=220, descentTimer=0, descentInterval=10;
@@ -415,7 +417,7 @@ bullets = []; ebullets = [];
     }
 }
 class Explosion {
-  constructor(x,y,scale=0.25){
+  constructor(x,y,scale=0.18){ // más pequeñas
     this.x=x; this.y=y; this.scale=scale;
     this.t=0; this.fps=14; this.frame=0; this.done=false;
   }
@@ -427,8 +429,9 @@ class Explosion {
   }
   draw(){
     const im = EXP_FRAMES[Math.min(this.frame, EXP_FRAMES.length-1)];
-    if (!im.complete) return;
+    if (!im || !im.complete) return;
     const size = im.width * this.scale;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(im, this.x - size/2, this.y - size/2, size, size);
   }
 }
@@ -491,16 +494,12 @@ for(let i=0;i<enemies.length;i++){ const a=enemies[i]; if(!a.alive) continue; fo
 bullets.forEach(b=>b.update(dt));
     ebullets.forEach(b=>b.update(dt));
 
-    // explosiones
-    explosions.forEach(ex=>ex.update(dt));
-    explosions = explosions.filter(ex=>!ex.done);
-
     // colisiones jugador->enemigos
     for(const b of bullets){
       for(const e of enemies){
         if(!e.alive) continue;
         if(rectsOverlap(b.rect, e.rect)){
-          e.alive=false; explosions.push(new Explosion(e.x, e.y, 0.25)); b.y = -9999; score += 100; scoreEl.textContent = score;
+          e.alive=false; explosions.push(new Explosion(e.x, e.y, 0.18)); b.y = -9999; score += 100; scoreEl.textContent = score;
         }
       }
     }
@@ -526,8 +525,22 @@ bullets.forEach(b=>b.update(dt));
     bullets = bullets.filter(b=>b.y>-20);
     ebullets = ebullets.filter(b=>b.y<H+20);
 
-    // nivel completo
-    if(enemies.every(e=>!e.alive)) nextLevel();
+    // actualizar explosiones
+    explosions.forEach(ex=>ex.update(dt));
+    explosions = explosions.filter(ex=>!ex.done);
+
+    // nivel completo con cola de explosiones
+    if(enemies.every(e=>!e.alive)){
+      if(!isFinishing){ isFinishing=true; finishingTimer=0; }
+    }
+
+    if(isFinishing){
+      finishingTimer += dt;
+      // Esperar a que terminen expl. y un colchón mínimo
+      if(explosions.length===0 && finishingTimer>=0.7){
+        isFinishing=false; finishingTimer=0; nextLevel();
+      }
+    }
   }
 
   function rectsOverlap(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
@@ -663,14 +676,16 @@ let interFrames = 0;
   function loop(){
   const t = now(); let dt = (t - time) / 1000; time = t; dt = Math.min(dt, 0.033);
   if(state==='playing') update(dt);
-  else if(state==='interlevel'){ if(--interFrames <= 0){ overlay.innerHTML=''; state='playing'; } }
+  else if(state==='interlevel'){ explosions.forEach(ex=>ex.update(dt)); explosions = explosions.filter(ex=>!ex.done); if(--interFrames <= 0){ overlay.innerHTML=''; state='playing'; } }
   draw(t);
   requestAnimationFrame(loop);
 }
 
   // boot
   showOverlay('menu');
-  loop();// --- Mobile Touch Zones Controls ---
+  loop();
+  
+  // --- Mobile Touch Zones Controls ---
   (function(){
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const moveArea = document.getElementById('moveArea');
