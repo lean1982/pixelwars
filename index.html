@@ -414,34 +414,38 @@ bullets.forEach(b=>b.update(dt));
 
   // ---------- Overlay UI ----------
   function btn(label, onclick, extraClass=''){ const b=document.createElement('button'); b.textContent=label; b.onclick=onclick; if(extraClass) b.className=extraClass; return b; }
-  function showOverlay(kind){
-    overlay.innerHTML=''; const card=document.createElement('div'); card.className='card';
-    if(kind==='menu'){
-      card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
-      const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Jugar', startGame));
-      card.appendChild(row);
-    } else if(kind==='level'){
-      card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
-      const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }));
-      card.appendChild(row);
-    } else if(kind==='gameover'){
-      card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
-      const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Reintentar', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
-      card.appendChild(row);
-    }     else if(kind==='win'){
-      card.innerHTML = `<h1>PIXEL WARS</h1><p>Puntos: ${score}</p>`;
-      const row = document.createElement('div'); row.className='row';
-      row.appendChild(btn('Jugar de nuevo', ()=>{ overlay.innerHTML=''; level=1; score=0; levelEl.textContent=level; resetLevel(); state='playing'; }));
-      card.appendChild(row);
-    }));
-      card.appendChild(row);
-    }
-    overlay.appendChild(card);
-  disableTouchZones(); }
+  
+function showOverlay(kind){
+  overlay.innerHTML='';
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  if(kind==='menu'){
+    card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
+    const row = document.createElement('div'); row.className='row';
+    row.appendChild(btn('Jugar', startGame));
+    card.appendChild(row);
+  } else if(kind==='level'){
+    card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
+    const row = document.createElement('div'); row.className='row';
+    row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }));
+    card.appendChild(row);
+  } else if(kind==='gameover'){
+    card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
+    const row = document.createElement('div'); row.className='row';
+    row.appendChild(btn('Reintentar', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
+    card.appendChild(row);
+  } else if(kind==='win'){
+    card.innerHTML = `<h1>PIXEL WARS</h1>`;
+    const p = document.createElement('p'); p.textContent = 'Puntos: ' + score; card.appendChild(p);
+    const row = document.createElement('div'); row.className='row';
+    row.appendChild(btn('Jugar de nuevo', ()=>{ overlay.innerHTML=''; level=1; score=0; levelEl.textContent=1; startGame(); }));
+    card.appendChild(row);
+  }
+
+  overlay.appendChild(card);
   disableTouchZones();
+}
 
 
   function startGame(){
