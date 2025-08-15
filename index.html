@@ -183,14 +183,18 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   constructor(x,y,style,colIndex,rowIndex){
     this.x=x; this.y=y; this.style=style; this.colIndex=colIndex; this.rowIndex=rowIndex;
     this.alive=true; this.w=24; this.h=18; this.cool=rand(1, 2.2);
-    this.vx=0; this.vy=0; this.turnTimer = rand(0.8,1.6);
-    this.topBound = 40; this.bottomBound = H*0.5 - 36;
+    this.vx=0; this.vy=0; this.turnTimer=rand(0.8,1.6);
+    this.topBound=40; this.bottomBound=H*0.5 - 36;
   }
-  update(dt){ if(!this.alive) return; this.cool -= dt; if(this.cool<0){ this.cool = rand(0.6,1.4); tryEnemyShoot(this); }
-    this.turnTimer -= dt; if(this.turnTimer<=0){ this.turnTimer=rand(0.8,1.6); const ang=Math.random()*Math.PI*2; const sp=rand(currentSpeedMin,currentSpeedMax); this.vx=Math.cos(ang)*sp; this.vy=Math.sin(ang)*sp; }
+  update(dt){
+    if(!this.alive) return;
+    this.cool -= dt; if(this.cool<0){ this.cool = rand(0.6, 1.4); tryEnemyShoot(this); }
+    this.turnTimer -= dt;
+    if(this.turnTimer<=0){ this.turnTimer=rand(0.8,1.6); const ang=Math.random()*Math.PI*2; const sp=rand(currentVxMin,currentVxMax); this.vx=Math.cos(ang)*sp; this.vy=Math.sin(ang)*sp; }
     this.x += this.vx*dt; this.y += this.vy*dt;
-    if(this.x<24){ this.x=24; this.vx=Math.abs(this.vx);} if(this.x>W-24){ this.x=W-24; this.vx=-Math.abs(this.vx);} 
-    if(this.y<this.topBound){ this.y=this.topBound; this.vy=Math.abs(this.vy);} if(this.y>this.bottomBound){ this.y=this.bottomBound; this.vy=-Math.abs(this.vy);} }
+    if(this.x<24){ this.x=24; this.vx=Math.abs(this.vx);} if(this.x>W-24){ this.x=W-24; this.vx=-Math.abs(this.vx);}
+    if(this.y<this.topBound){ this.y=this.topBound; this.vy=Math.abs(this.vy);} if(this.y>this.bottomBound){ this.y=this.bottomBound; this.vy=-Math.abs(this.vy);}
+  }
   draw(t){ if(!this.alive) return; drawEnemyStyle(this.style, this.x, this.y, t); }
   get rect(){ return {x:this.x-12,y:this.y-9,w:24,h:18}; }
 }
@@ -200,12 +204,12 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   let player=null, enemies=[], bullets=[], ebullets=[], score=0, level=1, state='menu';
   let dir=1, swarmSpeed=40, stepDown=20, swarmLeft=36, swarmRight=W-36;
   let enemyBulletSpeed=220, descentTimer=0, descentInterval=10;
-  let currentSpeedMin=16, currentSpeedMax=26;
+  let currentVxMin=16, currentVxMax=26;
 
   const LEVELS = [
-  { enemySpeed: 34, enemyBulletSpeed: 200, speedMin: 16, speedMax: 26 },
-  { enemySpeed: 44, enemyBulletSpeed: 230, speedMin: 22, speedMax: 34 },
-  { enemySpeed: 54, enemyBulletSpeed: 255, speedMin: 28, speedMax: 42 },
+  { enemySpeed: 34, enemyBulletSpeed: 200, vxMin: 16, vxMax: 26 },
+  { enemySpeed: 44, enemyBulletSpeed: 230, vxMin: 22, vxMax: 34 },
+  { enemySpeed: 54, enemyBulletSpeed: 255, vxMin: 28, vxMax: 42 },
 ];
 
   // layout dinámico
@@ -231,14 +235,37 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
         enemies.push(new Enemy(x, y, r % 4, slot, r));
       }
     }
-    currentSpeedMin = cfg.speedMin; currentSpeedMax = cfg.speedMax;
-for(const e of enemies){ const ang=Math.random()*Math.PI*2; const sp=rand(currentSpeedMin,currentSpeedMax); e.vx=Math.cos(ang)*sp; e.vy=Math.sin(ang)*sp; e.topBound=40; e.bottomBound=H*0.5-36; }
-bullets = []; ebullets = []; dir = 1; descentTimer = 0;
+    // asignar carriles fijos por fila
+    currentVxMin = cfg.vxMin; currentVxMax = cfg.vxMax;
+    for(let r=0;r<rows;r++){
+      const rowEnemies = enemies.filter(e=>e.rowIndex===r).sort((a,b)=>a.x-b.x);
+      for(let i=0;i<rowEnemies.length;i++){
+        const e = rowEnemies[i];
+        const leftX  = (i>0) ? (rowEnemies[i-1].x + e.x)/2 : swarmLeft;
+        const rightX = (i<rowEnemies.length-1) ? (rowEnemies[i+1].x + e.x)/2 : swarmRight;
+        const margin = 12;
+        e.lBound = Math.max(leftX, swarmLeft) + margin;
+        e.rBound = Math.min(rightX, swarmRight) - margin;
+        if (e.lBound >= e.rBound){ // fallback
+          const mid = Math.min(Math.max(e.x, swarmLeft+margin), swarmRight-margin);
+          e.lBound = mid-2; e.rBound = mid+2;
+        }
+        // velocidad inicial
+        const speed = rand(currentVxMin, currentVxMax);
+        const dir = Math.random()<0.5 ? -1 : 1;
+        e.vx = dir * speed;
+      }
+    }
+    
+    // override: 2D velocidades aleatorias dentro de la mitad superior
+    for(const e of enemies){ const ang=Math.random()*Math.PI*2; const sp=rand(currentVxMin,currentVxMax); e.vx=Math.cos(ang)*sp; e.vy=Math.sin(ang)*sp; e.topBound=40; e.bottomBound=H*0.5-36; }
+bullets = []; ebullets = [];
+    dir = 1; descentTimer = 0;
   }
 
   function bottomShooters(){
-  const bins = 10; const binW = W / bins; const map = new Map();
-  for(const e of enemies){ if(!e.alive) continue; const b = Math.max(0, Math.min(bins-1, Math.floor(e.x / binW))); const prev = map.get(b); if(!prev || e.y > prev.y) map.set(b, e); }
+  const bins=10, binW=W/bins; const map=new Map();
+  for(const e of enemies){ if(!e.alive) continue; const b=Math.max(0,Math.min(bins-1, Math.floor(e.x/binW))); const prev=map.get(b); if(!prev || e.y>prev.y) map.set(b,e); }
   return Array.from(map.values());
 }
 
@@ -258,16 +285,13 @@ bullets = []; ebullets = []; dir = 1; descentTimer = 0;
     // jugador y balas
     player.update(dt, input);
     for(const e of enemies) e.update(dt);
+    // separación para evitar solaparse
     for(let i=0;i<enemies.length;i++){
       const a=enemies[i]; if(!a.alive) continue;
       for(let j=i+1;j<enemies.length;j++){
         const b=enemies[j]; if(!b.alive) continue;
-        const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26; if(d2<minD*minD){
-          const d=Math.max(0.001,(d2**0.5)); const push=(minD-d)*0.5; const nx=dx/d, ny=dy/d;
-          a.x+=nx*push; a.y+=ny*push; b.x-=nx*push; b.y-=ny*push;
-          a.x=Math.max(24,Math.min(W-24,a.x)); a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y));
-          b.x=Math.max(24,Math.min(W-24,b.x)); b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y));
-        }
+        const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26;
+        if(d2<minD*minD){ const d=Math.max(0.001,Math.sqrt(d2)); const push=(minD-d)*0.5; const nx=dx/d, ny=dy/d; a.x+=nx*push; a.y+=ny*push; b.x-=nx*push; b.y-=ny*push; a.x=Math.max(24,Math.min(W-24,a.x)); a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y)); b.x=Math.max(24,Math.min(W-24,b.x)); b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y)); }
       }
     }
     bullets.forEach(b=>b.update(dt));
@@ -340,22 +364,15 @@ bullets = []; ebullets = []; dir = 1; descentTimer = 0;
         arr: Array.from({length:l.count}, () => ({ x: Math.random()*W, y: Math.random()*H, s: 1 + Math.floor(Math.random()*3) }))
       }));
     }
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0,0,W,H);
-
-    // Fondo con planeta/Death Star (se dibuja debajo de las estrellas)
-    if (bgReady) {
-      ctx.drawImage(bgImg, 0, 0, W, H);
+      ctx.fillStyle = '#fff';
+  const ts = t / 1000;
+  for (const layer of window._STARS) {
+    const off = (ts * layer.speed) % H;
+    for (const st of layer.arr) {
+      let y = st.y + off;
+      if (y > H) y -= H;
+      ctx.fillRect(st.x, y, st.s, st.s);
     }
-
-    ctx.fillStyle = '#fff';
-    const ts = t / 1000;
-    for (const layer of window._STARS) {
-  const off = (ts * layer.speed) % H;
-  for (const st of layer.arr) {
-    let y = st.y + off;
-    if (y > H) y -= H;
-    ctx.fillRect(st.x, y, st.s, st.s);
   }
 }
 
@@ -378,10 +395,8 @@ bullets = []; ebullets = []; dir = 1; descentTimer = 0;
   }
 
   function nextLevel(){
-  level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-  levelEl.textContent = level; resetLevel(); showOverlay('levelAuto'); state='interlevel'; interFrames = 15;
-}
-    levelEl.textContent = level; resetLevel(); showOverlay('level'); state='level';
+    level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
+    levelEl.textContent = level; resetLevel(); showOverlay('levelAuto'); state='interlevel'; interFrames = 15;
   }
 
   // ---------- Overlay UI ----------
@@ -396,10 +411,12 @@ bullets = []; ebullets = []; dir = 1; descentTimer = 0;
     } else if(kind==='level'){
       card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
       const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }));
-      card.appendChild(row);
-    } else if(kind==='levelAuto'){
+      row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }
+    else if(kind==='levelAuto'){
       card.innerHTML = `<h1>Nivel ${level}</h1><p>Preparados...</p>`;
+    }
+));
+      card.appendChild(row);
     } else if(kind==='gameover'){
       card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
       const row=document.createElement('div'); row.className='row';
