@@ -409,7 +409,7 @@ bullets.forEach(b=>b.update(dt));
 
   function nextLevel(){
     level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames=15; state='interlevel';
+    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames = 50; state='interlevel';
   }
 
   // ---------- Overlay UI ----------
@@ -431,11 +431,12 @@ bullets.forEach(b=>b.update(dt));
       const row=document.createElement('div'); row.className='row';
       row.appendChild(btn('Reintentar', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
       card.appendChild(row);
-    } else if(kind==='win'){
-      card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
-      const pointsP=document.createElement('p'); pointsP.textContent='Puntos: '+score; card.appendChild(pointsP);
-      const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Jugar de nuevo', ()=>{ level=1; levelEl.textContent=1; startGame(); }));
+    }     else if(kind==='win'){
+      card.innerHTML = `<h1>PIXEL WARS</h1><p>Puntos: ${score}</p>`;
+      const row = document.createElement('div'); row.className='row';
+      row.appendChild(btn('Jugar de nuevo', ()=>{ overlay.innerHTML=''; level=1; score=0; levelEl.textContent=level; resetLevel(); state='playing'; }));
+      card.appendChild(row);
+    }));
       card.appendChild(row);
     }
     overlay.appendChild(card);
