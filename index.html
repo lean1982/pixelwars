@@ -409,7 +409,7 @@ bullets.forEach(b=>b.update(dt));
 
   function nextLevel(){
     level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames = 50; state='interlevel';
+    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames = 150; state='interlevel';
   }
 
   // ---------- Overlay UI ----------
