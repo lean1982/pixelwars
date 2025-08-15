@@ -180,24 +180,34 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   }
 
   class Enemy{
-  constructor(x,y,style,colIndex,rowIndex){
-    this.x=x; this.y=y; this.style=style; this.colIndex=colIndex; this.rowIndex=rowIndex;
-    this.alive=true; this.w=24; this.h=18; this.cool=rand(1, 2.2);
-    this.vx=0; this.vy=0; this.turnTimer=rand(0.8,1.6);
-    this.topBound=40; this.bottomBound=H*0.5 - 36;
+    constructor(x,y,style,colIndex,rowIndex){
+      this.x=x; this.y=y;
+      this.style=style; this.colIndex=colIndex; this.rowIndex=rowIndex;
+      this.alive=true; this.w=24; this.h=18;
+      this.cool=rand(1, 2.2);
+      this.vx = 0; // se setea en resetLevel segun nivel
+      this.turnTimer = rand(0.8, 1.8);
+      this.lBound = 0; this.rBound = 0; // carril fijo
+    }
+    update(dt){
+      if(!this.alive) return;
+      this.cool -= dt; if(this.cool<0){ this.cool = rand(0.6, 1.4); tryEnemyShoot(this); }
+      // cambiar dir/vel de vez en cuando
+      this.turnTimer -= dt;
+      if (this.turnTimer <= 0 || this.x<=this.lBound || this.x>=this.rBound){
+        this.turnTimer = rand(0.8, 1.8);
+        const speed = rand(currentVxMin, currentVxMax);
+        const dir = Math.random()<0.5 ? -1 : 1;
+        this.vx = dir * speed;
+      }
+      // mover y rebotar dentro del carril fijo
+      this.x += this.vx * dt;
+      if (this.x < this.lBound){ this.x = this.lBound; this.vx = Math.abs(this.vx); }
+      if (this.x > this.rBound){ this.x = this.rBound; this.vx = -Math.abs(this.vx); }
+    }
+    draw(t){ if(!this.alive) return; drawEnemyStyle(this.style, this.x, this.y, t); }
+    get rect(){ return {x:this.x-12,y:this.y-9,w:24,h:18}; }
   }
-  update(dt){
-    if(!this.alive) return;
-    this.cool -= dt; if(this.cool<0){ this.cool = rand(0.6, 1.4); tryEnemyShoot(this); }
-    this.turnTimer -= dt;
-    if(this.turnTimer<=0){ this.turnTimer=rand(0.8,1.6); const ang=Math.random()*Math.PI*2; const sp=rand(currentVxMin,currentVxMax); this.vx=Math.cos(ang)*sp; this.vy=Math.sin(ang)*sp; }
-    this.x += this.vx*dt; this.y += this.vy*dt;
-    if(this.x<24){ this.x=24; this.vx=Math.abs(this.vx);} if(this.x>W-24){ this.x=W-24; this.vx=-Math.abs(this.vx);}
-    if(this.y<this.topBound){ this.y=this.topBound; this.vy=Math.abs(this.vy);} if(this.y>this.bottomBound){ this.y=this.bottomBound; this.vy=-Math.abs(this.vy);}
-  }
-  draw(t){ if(!this.alive) return; drawEnemyStyle(this.style, this.x, this.y, t); }
-  get rect(){ return {x:this.x-12,y:this.y-9,w:24,h:18}; }
-}
 
   // -------- Game State ---------
   const input = { left:false, right:false, space:false, fire:false };
@@ -256,15 +266,14 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
         e.vx = dir * speed;
       }
     }
-    
-    // override: 2D velocidades aleatorias dentro de la mitad superior
-    for(const e of enemies){ const ang=Math.random()*Math.PI*2; const sp=rand(currentVxMin,currentVxMax); e.vx=Math.cos(ang)*sp; e.vy=Math.sin(ang)*sp; e.topBound=40; e.bottomBound=H*0.5-36; }
+    /* V2_vy_init */
+for(const e of enemies){ if(e){ e.vy = (Math.random()<0.5?-1:1) * rand(currentVxMin*0.6, currentVxMax*0.8); e.topBound = 40; e.bottomBound = H*0.5 - 36; } }
 bullets = []; ebullets = [];
     dir = 1; descentTimer = 0;
   }
 
   function bottomShooters(){
-  const bins=10, binW=W/bins; const map=new Map();
+  const bins = 10; const binW = W / bins; const map = new Map();
   for(const e of enemies){ if(!e.alive) continue; const b=Math.max(0,Math.min(bins-1, Math.floor(e.x/binW))); const prev=map.get(b); if(!prev || e.y>prev.y) map.set(b,e); }
   return Array.from(map.values());
 }
@@ -285,16 +294,11 @@ bullets = []; ebullets = [];
     // jugador y balas
     player.update(dt, input);
     for(const e of enemies) e.update(dt);
-    // separación para evitar solaparse
-    for(let i=0;i<enemies.length;i++){
-      const a=enemies[i]; if(!a.alive) continue;
-      for(let j=i+1;j<enemies.length;j++){
-        const b=enemies[j]; if(!b.alive) continue;
-        const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26;
-        if(d2<minD*minD){ const d=Math.max(0.001,Math.sqrt(d2)); const push=(minD-d)*0.5; const nx=dx/d, ny=dy/d; a.x+=nx*push; a.y+=ny*push; b.x-=nx*push; b.y-=ny*push; a.x=Math.max(24,Math.min(W-24,a.x)); a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y)); b.x=Math.max(24,Math.min(W-24,b.x)); b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y)); }
-      }
-    }
-    bullets.forEach(b=>b.update(dt));
+    /* V2_vy_step */
+for(const e of enemies){ if(!e.alive) continue; if(typeof e.vy!=='number') e.vy=0; e.y += e.vy*dt; if(e.y<e.topBound){ e.y=e.topBound; e.vy=Math.abs(e.vy);} if(e.y>e.bottomBound){ e.y=e.bottomBound; e.vy=-Math.abs(e.vy);} if((Math.random()<0.02)) e.vy += (Math.random()-0.5)*8; }
+// separación simple para evitar solaparse
+for(let i=0;i<enemies.length;i++){ const a=enemies[i]; if(!a.alive) continue; for(let j=i+1;j<enemies.length;j++){ const b=enemies[j]; if(!b.alive) continue; const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26; if(d2<minD*minD){ const d=Math.max(0.001,Math.sqrt(d2)); const push=(minD-d)*0.5; const nx=dx/d, ny=dy/d; a.x+=nx*push; a.y+=ny*push; b.x-=nx*push; b.y-=ny*push; a.x=Math.max(24,Math.min(W-24,a.x)); a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y)); b.x=Math.max(24,Math.min(W-24,b.x)); b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y)); } } }
+bullets.forEach(b=>b.update(dt));
     ebullets.forEach(b=>b.update(dt));
 
     // colisiones jugador->enemigos
@@ -364,17 +368,26 @@ bullets = []; ebullets = [];
         arr: Array.from({length:l.count}, () => ({ x: Math.random()*W, y: Math.random()*H, s: 1 + Math.floor(Math.random()*3) }))
       }));
     }
-      ctx.fillStyle = '#fff';
-  const ts = t / 1000;
-  for (const layer of window._STARS) {
-    const off = (ts * layer.speed) % H;
-    for (const st of layer.arr) {
-      let y = st.y + off;
-      if (y > H) y -= H;
-      ctx.fillRect(st.x, y, st.s, st.s);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+
+    // Fondo con planeta/Death Star (se dibuja debajo de las estrellas)
+    if (bgReady) {
+      ctx.drawImage(bgImg, 0, 0, W, H);
     }
+
+    ctx.fillStyle = '#fff';
+    const ts = t / 1000;
+    for (const layer of window._STARS) {
+  const off = (ts * layer.speed) % H;
+  for (const st of layer.arr) {
+    let y = st.y + off;
+    if (y > H) y -= H;
+    ctx.fillRect(st.x, y, st.s, st.s);
   }
 }
+
+  }
 
   function renderLives(){
     livesEl.innerHTML = '';
@@ -396,7 +409,7 @@ bullets = []; ebullets = [];
 
   function nextLevel(){
     level += 1; if(level>3){ showOverlay('win'); state='win'; return; }
-    levelEl.textContent = level; resetLevel(); showOverlay('levelAuto'); state='interlevel'; interFrames = 15;
+    levelEl.textContent = level; resetLevel(); overlay.innerHTML='';{const card=document.createElement('div');card.className='card';card.innerHTML=`<h1>Nivel ${level}</h1>`;overlay.appendChild(card);} interFrames=15; state='interlevel';
   }
 
   // ---------- Overlay UI ----------
@@ -411,11 +424,7 @@ bullets = []; ebullets = [];
     } else if(kind==='level'){
       card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
       const row=document.createElement('div'); row.className='row';
-      row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }
-    else if(kind==='levelAuto'){
-      card.innerHTML = `<h1>Nivel ${level}</h1><p>Preparados...</p>`;
-    }
-));
+      row.appendChild(btn('Comenzar', ()=>{ overlay.innerHTML=''; state='playing'; }));
       card.appendChild(row);
     } else if(kind==='gameover'){
       card.innerHTML = `<h1>Pixel Wars</h1><p>Movete con <kbd>◄</kbd>/<kbd>►</kbd> o <kbd>A</kbd>/<kbd>D</kbd>.</p>`;
