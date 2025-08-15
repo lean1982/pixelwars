@@ -302,7 +302,7 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
     }
     update(dt){
       if(!this.alive) return;
-      this.cool -= dt; if(this.cool<0){ this.cool = rand(0.6, 1.4); tryEnemyShoot(this); }
+      this.cool -= dt; if(this.cool<0){ this.cool = rand(fireMin, fireMax); tryEnemyShoot(this); }
       // cambiar dir/vel de vez en cuando
       this.turnTimer -= dt;
       if (this.turnTimer <= 0 || this.x<=this.lBound || this.x>=this.rBound){
@@ -328,10 +328,13 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
   let currentVxMin=16, currentVxMax=26;
 
   const LEVELS = [
-  { enemySpeed: 34, enemyBulletSpeed: 200, vxMin: 16, vxMax: 26 },
-  { enemySpeed: 44, enemyBulletSpeed: 230, vxMin: 22, vxMax: 34 },
-  { enemySpeed: 54, enemyBulletSpeed: 255, vxMin: 28, vxMax: 42 },
+  { enemySpeed: 34, enemyBulletSpeed: 200, vxMin:16, vxMax:26, fireMin:1.0, fireMax:1.8, aimWindow:40, spray:0.10 },
+  { enemySpeed: 44, enemyBulletSpeed: 230, vxMin:22, vxMax:34, fireMin:0.8, fireMax:1.4, aimWindow:34, spray:0.12 },
+  { enemySpeed: 54, enemyBulletSpeed: 255, vxMin:28, vxMax:42, fireMin:0.6, fireMax:1.2, aimWindow:28, spray:0.16 },
 ];
+
+let fireMin=1.0, fireMax=1.8, aimWindow=36, sprayChance=0.08;
+
 
   // layout dinámico
   let rows=5, cols=10, pad=28, startY=90, gapX=0, gapY=44;
@@ -354,7 +357,13 @@ function disableTouchZones(){ const m=document.getElementById('mobileUI'); if(m)
         const x = pad + slot*gapX;
         const y = startY + r*gapY;
         enemies.push(new Enemy(x, y, r % 4, slot, r));
-      }
+        // bandas verticales por enemigo (flote superior)
+  for(const e of enemies){
+    const band = 18 + Math.max(0, 10 - e.rowIndex*2);
+    e.topBound = e.y - band;
+    e.bottomBound = Math.min(e.y + band, H*0.48);
+  }
+}
     }
     // asignar carriles fijos por fila
     currentVxMin = cfg.vxMin; currentVxMax = cfg.vxMax;
@@ -391,12 +400,12 @@ bullets = []; ebullets = [];
 
   function tryEnemyShoot(enemy){
     if(state!=='playing' || !enemy.alive) return;
-    const shooters = bottomShooters();
-    if(!shooters.includes(enemy)) return;
-    if(Math.random() < 0.35){
+    const aligned = Math.abs(enemy.x - player.x) <= aimWindow;
+    const randomSpray = Math.random() < sprayChance;
+    if (aligned || randomSpray){
       ebullets.push(new Bullet(enemy.x, enemy.y+10, +enemyBulletSpeed, true));
     }
-  }
+}
 
   function update(dt){
     if(state!=='playing') return;
@@ -406,6 +415,49 @@ bullets = []; ebullets = [];
     player.update(dt, input);
     for(const e of enemies) e.update(dt);
     /* V2_vy_step */
+// flote vertical con amortiguación (muy suave) + separación con sesgo horizontal
+for(const e of enemies){
+  if(!e.alive) continue;
+  if(typeof e.vy !== 'number') e.vy = 0;
+
+  // pequeña aceleración aleatoria y amortiguación
+  e.vy += (Math.random()-0.5) * 8 * dt;   // jitter leve
+  e.vy *= 0.90;                            // damping
+  const VY_CAP = 0.45;                     // px por frame aprox (a 60fps ~27 px/s)
+  if(e.vy >  VY_CAP) e.vy =  VY_CAP;
+  if(e.vy < -VY_CAP) e.vy = -VY_CAP;
+
+  e.y += e.vy;
+
+  // respetar banda vertical
+  if(e.topBound!==undefined){
+    if(e.y < e.topBound){ e.y = e.topBound; e.vy = Math.abs(e.vy)*0.6; }
+    if(e.y > e.bottomBound){ e.y = e.bottomBound; e.vy = -Math.abs(e.vy)*0.6; }
+  }
+}
+
+// separación básica (prioriza X, Y reducido para evitar caídas bruscas)
+for(let i=0;i<enemies.length;i++){
+  const a=enemies[i]; if(!a.alive) continue;
+  for(let j=i+1;j<enemies.length;j++){
+    const b=enemies[j]; if(!b.alive) continue;
+    const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26;
+    if(d2<minD*minD){
+      const d=Math.max(0.001,Math.sqrt(d2));
+      const push=(minD-d)*0.5;
+      const nx=dx/d, ny=dy/d;
+      const yBias = 0.35; // empuja menos en Y para no "caer"
+      a.x+=nx*push; b.x-=nx*push;
+      a.y+=ny*push*yBias; b.y-=ny*push*yBias;
+      a.x=Math.max(a.lBound,Math.min(a.rBound,a.x));
+      b.x=Math.max(b.lBound,Math.min(b.rBound,b.x));
+      if(a.topBound!==undefined){ a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y)); }
+      if(b.topBound!==undefined){ b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y)); }
+    }
+  }
+}
+
+
 for(const e of enemies){ if(!e.alive) continue; if(typeof e.vy!=='number') e.vy=0; e.y += e.vy*dt; if(e.y<e.topBound){ e.y=e.topBound; e.vy=Math.abs(e.vy);} if(e.y>e.bottomBound){ e.y=e.bottomBound; e.vy=-Math.abs(e.vy);} if((Math.random()<0.02)) e.vy += (Math.random()-0.5)*8; }
 // separación simple para evitar solaparse
 for(let i=0;i<enemies.length;i++){ const a=enemies[i]; if(!a.alive) continue; for(let j=i+1;j<enemies.length;j++){ const b=enemies[j]; if(!b.alive) continue; const dx=a.x-b.x, dy=a.y-b.y; const d2=dx*dx+dy*dy; const minD=26; if(d2<minD*minD){ const d=Math.max(0.001,Math.sqrt(d2)); const push=(minD-d)*0.5; const nx=dx/d, ny=dy/d; a.x+=nx*push; a.y+=ny*push; b.x-=nx*push; b.y-=ny*push; a.x=Math.max(24,Math.min(W-24,a.x)); a.y=Math.max(a.topBound,Math.min(a.bottomBound,a.y)); b.x=Math.max(24,Math.min(W-24,b.x)); b.y=Math.max(b.topBound,Math.min(b.bottomBound,b.y)); } } }
